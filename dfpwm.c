@@ -172,6 +172,28 @@ void unframewindow(Window win) {
 // Events
 ////////////////////////////////////////////////
 
+void event_buttonpress(XEvent *event) {
+    XButtonEvent *e = (XButtonEvent *)&event->xbutton;
+
+    const Window frame = findclient(e->window);  
+    XRaiseWindow(info.dsp, frame);
+
+    info.focused = e->window;
+
+    Window root;
+    int x, y;
+    unsigned int width, height, border_width, depth;
+
+    XGetGeometry(info.dsp, frame, &root, &x, &y, &width, &height, &border_width, &depth);
+
+    info.drag.startpos.x = e->x_root;
+    info.drag.startpos.y = e->y_root;
+    info.drag.startframepos.x = x;
+    info.drag.startframepos.y = y;
+    info.drag.startframesize.x = width;
+    info.drag.startframesize.y = height;
+}
+
 void event_configrequest(XEvent *event) {
     XConfigureRequestEvent *e = (XConfigureRequestEvent *)&event->xconfigurerequest;
     
@@ -193,26 +215,16 @@ void event_configrequest(XEvent *event) {
     XSync(info.dsp, False);
 }
 
-void event_buttonpress(XEvent *event) {
-    XButtonEvent *e = (XButtonEvent *)&event->xbutton;
-
-    const Window frame = findclient(e->window);  
-    XRaiseWindow(info.dsp, frame);
+void event_enternotify(XEvent *event) {
+    XEnterWindowEvent *e = (XEnterWindowEvent *)&event->xcrossing;
 
     info.focused = e->window;
+}
 
-    Window root;
-    int x, y;
-    unsigned int width, height, border_width, depth;
+void event_focusin(XEvent *event) {
+    XFocusInEvent *e = (XFocusInEvent *)&event->xfocus;
 
-    XGetGeometry(info.dsp, frame, &root, &x, &y, &width, &height, &border_width, &depth);
-
-    info.drag.startpos.x = e->x_root;
-    info.drag.startpos.y = e->y_root;
-    info.drag.startframepos.x = x;
-    info.drag.startframepos.y = y;
-    info.drag.startframesize.x = width;
-    info.drag.startframesize.y = height;
+    info.focused = e->window;
 }
 
 void event_keypress(XEvent *event) {
@@ -293,6 +305,8 @@ void spawn(Arg *a) {
 static void (*evhandler[]) (XEvent *) = {
     [ButtonPress] = event_buttonpress,
     [ConfigureRequest] = event_configrequest,
+    [EnterNotify] = event_enternotify,
+    [FocusIn] = event_focusin,
     [KeyPress] = event_keypress,
     [MapRequest] = event_maprequest,
     [MotionNotify] = event_motionnotify,
