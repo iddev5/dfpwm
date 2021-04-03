@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -35,9 +36,18 @@ typedef struct Client {
     Client *next;
 } Client;
 
+typedef union Arg {
+    int i;
+    bool b;
+    char *s;
+    char **v;
+} Arg;
+
 typedef struct KeyEvent {
     unsigned int modifier;
     unsigned int key;
+    void (*func)(Arg *a);
+    Arg arg;
 } KeyEvent;
 
 typedef struct ButtonEvent {
@@ -50,6 +60,9 @@ typedef struct Config {
     unsigned long frame_inactive_color;
 } Config;
 
+void killclient(Arg *a);
+void spawn(Arg *a);
+
 #include "config.h"
 
 /////////////////////////////////////////////////
@@ -59,7 +72,8 @@ typedef struct Config {
 static struct {
     Display *dsp;
     Window root;
-    
+    Window focused;
+
     Client clients[CLIENT_MAX];
     Client *client_top;
     Drag drag;
@@ -185,6 +199,8 @@ void event_buttonpress(XEvent *event) {
     const Window frame = findclient(e->window);  
     XRaiseWindow(info.dsp, frame);
 
+    info.focused = e->window;
+
     Window root;
     int x, y;
     unsigned int width, height, border_width, depth;
@@ -202,8 +218,11 @@ void event_buttonpress(XEvent *event) {
 void event_keypress(XEvent *event) {
     XKeyEvent *e = (XKeyEvent *)&event->xkey;
 
-    if ((e->state & MODKEY) && e->keycode == XKeysymToKeycode(info.dsp, XK_c)) {
-        XKillClient(info.dsp, e->window);
+    for (int i = 0; i < LENGTH(keys); i += 1) {
+        if ((e->state & keys[i].modifier) && (e->keycode == XKeysymToKeycode(info.dsp, keys[i].key))) {
+            if ((keys[i].func))
+                keys[i].func(&keys[i].arg);
+        }
     }
 }
 
@@ -251,6 +270,23 @@ void event_unmapnotify(XEvent *event) {
 }
 
 /////////////////////////////////////////////////
+// Actions
+////////////////////////////////////////////////
+
+void killclient(Arg *a) {
+    XKillClient(info.dsp, info.focused);
+}
+
+void spawn(Arg *a) { 
+    if (fork() == 0) {
+        if (execvp(a->v[0], (char**)a->v) == -1) {
+            fprintf(stderr, "dfpwm: cannot spawn process");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
+/////////////////////////////////////////////////
 // Main
 ////////////////////////////////////////////////
 
@@ -269,15 +305,6 @@ void checkwm(void) {
     XSync(info.dsp, False);
     XSetErrorHandler(xerror);
     XSync(info.dsp, False);
-}
-
-void spawn(const char *argv[]) {
-    if (fork() == 0) {
-        if (execvp(argv[0], (char**)argv) == -1) {
-            fprintf(stderr, "dfpwm: cannot spawn process");
-            exit(EXIT_FAILURE);
-        }
-    }
 }
 
 void run(void) { 
@@ -305,8 +332,8 @@ int main(int argc, char **argv) {
 
     info.root = XDefaultRootWindow(info.dsp);
 
-    const char *autostart[] = { "/bin/sh", "-c", "./test/autostart.sh", NULL };
-    spawn(autostart);
+    Arg autostart = { .v = (char *[]){"/bin/sh", "-c", "./test/autostart.sh", NULL } };
+    spawn(&autostart);
 
     checkwm();
     run();

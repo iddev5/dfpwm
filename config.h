@@ -6,8 +6,11 @@ static Config config = {
 
 #define MOD (Mod1Mask | ControlMask)
 
+char *termcmd[] = { "st", NULL }; 
+
 static KeyEvent keys[] = {
-    { MOD, XK_c},
+    { MOD, XK_c, killclient, {0} },
+    { MOD, XK_s, spawn, { .v = termcmd } },
 };
 
 static ButtonEvent buttons[] = {
