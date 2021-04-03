@@ -226,26 +226,21 @@ void event_motionnotify(XEvent *event) {
         return;
     const Window frame = findclient(e->window);
 
-    Vec2 dragpos = { e->x_root, e->y_root };
-    Vec2 delta = { dragpos.x - info.drag.startpos.x, dragpos.y - info.drag.startpos.y };
+    Vec2 delta = { e->x_root - info.drag.startpos.x, e->y_root - info.drag.startpos.y };
 
-    if (e->state & Button1Mask) {
-        Vec2 position = { info.drag.startframepos.x + delta.x, info.drag.startframepos.y + delta.y };
-        XMoveWindow(info.dsp, frame, position.x, position.y);
-    }
-    else if (e->state & Button3Mask) {
-        Vec2 size_delta = { 
-            MAX(delta.x, -info.drag.startframesize.x),
-            MAX(delta.y, -info.drag.startframesize.y) 
-        };
-        Vec2 size = {
-            info.drag.startframesize.x + size_delta.x,
-            info.drag.startframesize.y + size_delta.y,
-        };
+    Vec2 position = {
+        info.drag.startframepos.x + ((e->state & Button1Mask) ? delta.x : 0),
+        info.drag.startframepos.y + ((e->state & Button1Mask) ? delta.y : 0),
+    };
 
-        XResizeWindow(info.dsp, frame, size.x, size.y);
-        XResizeWindow(info.dsp, e->window, size.x, size.y);
-    }
+    Vec2 size = {
+        MAX(1, info.drag.startframesize.x + ((e->state & Button3Mask) ? delta.x : 0)),
+        MAX(1, info.drag.startframesize.y + ((e->state & Button3Mask) ? delta.y : 0))
+    };
+
+
+    XMoveResizeWindow(info.dsp, frame, position.x, position.y, size.x, size.y);
+    XResizeWindow(info.dsp, e->window, size.x, size.y);
 }
 
 void event_unmapnotify(XEvent *event) {
