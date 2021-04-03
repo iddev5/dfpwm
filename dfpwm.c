@@ -5,26 +5,9 @@
 #include <X11/Xutil.h>
 
 #define CLIENT_MAX 256
+#define MODKEY (Mod1Mask | ControlMask)
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define LENGTH(x) (sizeof(x) / sizeof(x[0]))
-
-/////////////////////////////////////////////////
-// Config
-////////////////////////////////////////////////
-
-static struct {
-    struct {
-        unsigned int modkey;
-        unsigned int frame_border_width;
-    } set;
-    
-    struct {
-        unsigned long bg_frame;
-        unsigned long fg_frame;
-    } color;
-} config;
-
-#define MODKEY config.set.modkey
 
 /////////////////////////////////////////////////
 // Structs
@@ -47,10 +30,20 @@ typedef struct Client {
     Client *next;
 } Client;
 
-typedef struct Key {
+typedef struct KeyEvent {
     unsigned int modifier;
     unsigned int key;
-} Key;
+} KeyEvent;
+
+typedef struct ButtonEvent {
+    unsigned int modifier;
+    unsigned int button;
+} ButtonEvent;
+
+typedef struct Config {
+    unsigned int frame_border_width;
+    unsigned long frame_inactive_color;
+} Config;
 
 #include "config.h"
 
@@ -95,8 +88,8 @@ void removeclient(Window window) {
 int xerror(Display *dsp, XErrorEvent *err) {
     char *buf = malloc(256);
     XGetErrorText(info.dsp, err->error_code, buf, 256);
-    fprintf(stderr, "dfpwm: request code: %d, error code: %d, resource id: %ld :: %s\n",
-        err->request_code, err->error_code, err->resourceid, buf);
+    fprintf(stderr, "dfpwm: %s\n\trequest code: %d, error code: %d, resource id: %ld\n",
+        buf, err->request_code, err->error_code, err->resourceid);
     free(buf);
     return 0;
 }
@@ -120,8 +113,8 @@ void framewindow(Window win) {
 
     const Window frame = XCreateSimpleWindow(info.dsp, root, 
             attr.x, attr.y, attr.width, attr.height, 
-            config.set.frame_border_width, 
-            config.color.fg_frame, config.color.bg_frame);
+            config.frame_border_width, 
+            config.frame_inactive_color, 0xffffff);
 
     XSelectInput(info.dsp, frame, SubstructureRedirectMask | SubstructureNotifyMask);
     XAddToSaveSet(info.dsp, frame);
@@ -135,13 +128,12 @@ void framewindow(Window win) {
     *info.client_top = client;
     info.client_top += 1;
 
-    XGrabButton(info.dsp, Button1, MODKEY, win, False, 
-        ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
-        GrabModeAsync, GrabModeAsync, None, None);
-    XGrabButton(info.dsp, Button3, MODKEY, win, False, 
-        ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
-        GrabModeAsync, GrabModeAsync, None, None);
-    
+    for (int i = 0; i < LENGTH(buttons); i += 1) {
+        XGrabButton(info.dsp, buttons[i].button, buttons[i].modifier, win, 
+            False, ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+            GrabModeAsync, GrabModeAsync, None, None);
+    }
+
     for (int i = 0; i < LENGTH(keys); i += 1) {
         XGrabKey(info.dsp, XKeysymToKeycode(info.dsp, keys[i].key), keys[i].modifier, win,
             False, GrabModeAsync, GrabModeAsync);
@@ -266,7 +258,7 @@ static void (*evhandler[]) (XEvent *) = {
     [UnmapNotify] = event_unmapnotify,
 };
 
-void checkwm() {
+void checkwm(void) {
     XSetErrorHandler(xerrorwm);
     XSelectInput(info.dsp, info.root, SubstructureRedirectMask);
     XSync(info.dsp, False);
@@ -283,7 +275,7 @@ void spawn(const char *argv[]) {
     }
 }
 
-void run() { 
+void run(void) { 
     int running = 1;
     XEvent event;
     XSync(info.dsp, False);
@@ -293,11 +285,11 @@ void run() {
     }
 }
 
-void init() {
+void init(void) {
     info.client_top = info.clients;
 }
 
-int main() {
+int main(int argc, char **argv) {
     init();
 
     info.dsp = XOpenDisplay(0x0);
@@ -307,11 +299,6 @@ int main() {
     }
 
     info.root = XDefaultRootWindow(info.dsp);
-
-    config.set.modkey = Mod1Mask | ControlMask;
-    config.set.frame_border_width = 1;
-    config.color.fg_frame = 0x00ff04;
-    config.color.bg_frame = 0xffffff;
 
     const char *autostart[] = { "/bin/sh", "-c", "./test/autostart.sh", NULL };
     spawn(autostart);
