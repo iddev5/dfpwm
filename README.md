@@ -21,4 +21,9 @@ You can customize the contents inside ``test`` folder: autostart.sh and xinitrc.
 [1] https://dwm.suckless.org/  
 [2] https://jichu4n.com/posts/how-x-window-managers-work-and-how-to-write-one-part-i/  
 [3] http://www.6809.org.uk/evilwm/  
-[4] https://tronche.com/gui/x/xlib/  
+[4] https://tronche.com/gui/x/xlib/ 
+
+## License
+Copyright 2021, Ayush Bardhan Tripathy  
+This software is licensed under BSD 2-Clause License  
+See [LICENSE.md](LICENSE.md) for more info.

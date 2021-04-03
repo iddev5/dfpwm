@@ -1,3 +1,8 @@
+/* Copyright 2021, Ayush Bardhan Tripathy
+ * This software is licensed under BSD 2-Clause License
+ * See LICENSE.md for detailed info.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
