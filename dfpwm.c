@@ -6,6 +6,7 @@
 
 #define CLIENT_MAX 256
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define LENGTH(x) (sizeof(x) / sizeof(x[0]))
 
 /////////////////////////////////////////////////
 // Config
@@ -46,6 +47,13 @@ typedef struct Client {
     Client *next;
 } Client;
 
+typedef struct Key {
+    unsigned int modifier;
+    unsigned int key;
+} Key;
+
+#include "config.h"
+
 /////////////////////////////////////////////////
 // Info
 ////////////////////////////////////////////////
@@ -85,8 +93,11 @@ void removeclient(Window window) {
 ////////////////////////////////////////////////
 
 int xerror(Display *dsp, XErrorEvent *err) {
-    fprintf(stderr, "dfpwm: request code: %d, error code: %d, resource id: %ld\n",
-        err->request_code, err->error_code, err->resourceid);
+    char *buf = malloc(256);
+    XGetErrorText(info.dsp, err->error_code, buf, 256);
+    fprintf(stderr, "dfpwm: request code: %d, error code: %d, resource id: %ld :: %s\n",
+        err->request_code, err->error_code, err->resourceid, buf);
+    free(buf);
     return 0;
 }
 
@@ -130,8 +141,11 @@ void framewindow(Window win) {
     XGrabButton(info.dsp, Button3, MODKEY, win, False, 
         ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
         GrabModeAsync, GrabModeAsync, None, None);
-    XGrabKey(info.dsp, XKeysymToKeycode(info.dsp, XK_c), MODKEY, win, False, 
-        GrabModeAsync, GrabModeAsync);
+    
+    for (int i = 0; i < LENGTH(keys); i += 1) {
+        XGrabKey(info.dsp, XKeysymToKeycode(info.dsp, keys[i].key), keys[i].modifier, win,
+            False, GrabModeAsync, GrabModeAsync);
+    }
 }
 
 void unframewindow(Window win) {
