@@ -168,6 +168,11 @@ void unframewindow(Window win) {
     removeclient(win);
 }
 
+void focus(Window window) {
+    info.focused = window;
+    XRaiseWindow(info.dsp, info.focused);
+}
+
 /////////////////////////////////////////////////
 // Events
 ////////////////////////////////////////////////
@@ -176,9 +181,7 @@ void event_buttonpress(XEvent *event) {
     XButtonEvent *e = (XButtonEvent *)&event->xbutton;
 
     const Window frame = findclient(e->window);  
-    XRaiseWindow(info.dsp, frame);
-
-    info.focused = e->window;
+    focus(e->window);
 
     Window root;
     int x, y;
@@ -216,15 +219,13 @@ void event_configrequest(XEvent *event) {
 }
 
 void event_enternotify(XEvent *event) {
-    XEnterWindowEvent *e = (XEnterWindowEvent *)&event->xcrossing;
-
-    info.focused = e->window;
+    /* blank for now */
 }
 
 void event_focusin(XEvent *event) {
     XFocusInEvent *e = (XFocusInEvent *)&event->xfocus;
 
-    info.focused = e->window;
+    focus(e->window);
 }
 
 void event_keypress(XEvent *event) {
