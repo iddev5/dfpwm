@@ -170,7 +170,9 @@ void unframewindow(Window win) {
 
 void focus(Window window) {
     info.focused = window;
+
     XRaiseWindow(info.dsp, info.focused);
+    XSetInputFocus(info.dsp, info.focused, RevertToPointerRoot, CurrentTime);
 }
 
 /////////////////////////////////////////////////
@@ -216,10 +218,8 @@ void event_configrequest(XEvent *event) {
 
     XConfigureWindow(info.dsp, e->window, e->value_mask, &changes);
     XSync(info.dsp, False);
-}
 
-void event_enternotify(XEvent *event) {
-    /* blank for now */
+    focus(e->window);
 }
 
 void event_focusin(XEvent *event) {
@@ -306,7 +306,6 @@ void spawn(Arg *a) {
 static void (*evhandler[]) (XEvent *) = {
     [ButtonPress] = event_buttonpress,
     [ConfigureRequest] = event_configrequest,
-    [EnterNotify] = event_enternotify,
     [FocusIn] = event_focusin,
     [KeyPress] = event_keypress,
     [MapRequest] = event_maprequest,
